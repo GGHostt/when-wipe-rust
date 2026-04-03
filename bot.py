@@ -12,9 +12,9 @@ WIPE_MINUTE = 0
 # Хранилище chat_id
 chats = set()
 
-# Команда /wipe: добавляем chat_id в список
+# Команда /wipe
 async def wipe(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chats.add(update.effective_chat.id)  # сохраняем chat_id
+    chats.add(update.effective_chat.id)
     now = datetime.datetime.utcnow()
     days_until = (WIPE_WEEKDAY - now.weekday()) % 7
     wipe_time = datetime.datetime.combine(now.date(), datetime.time(WIPE_HOUR, WIPE_MINUTE)) + datetime.timedelta(days=days_until)
@@ -25,7 +25,7 @@ async def wipe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     minutes, _ = divmod(remainder, 60)
     await update.message.reply_text(f"До вайпа осталось {delta.days} дн. {hours} час. {minutes} мин.")
 
-# Фоновая задача, которая будет уведомлять о начале вайпа
+# Фоновая задача уведомления
 async def notify_wipe(app):
     while True:
         now = datetime.datetime.utcnow()
@@ -42,11 +42,11 @@ async def notify_wipe(app):
                 print(f"Не удалось отправить сообщение в чат {chat_id}: {e}")
         await asyncio.sleep(60)  # чтобы не слать повторно
 
-# Запускаем фоновую задачу уведомлений
+# Запуск фоновой задачи уведомлений
 async def start_notify_task(app):
     asyncio.create_task(notify_wipe(app))
 
-# Главная функция бота
+# Главная функция
 async def main():
     TOKEN = os.getenv("BOT_TOKEN")
     if not TOKEN:
@@ -59,7 +59,7 @@ async def main():
     # Запускаем фоновую задачу уведомлений
     asyncio.create_task(notify_wipe(app))
 
-    # Запускаем бота
+    # Запуск бота
     await app.run_polling()
 
 # Точка входа
