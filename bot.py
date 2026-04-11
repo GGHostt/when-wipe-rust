@@ -3,6 +3,7 @@ from imaplib import Commands
 import logging
 import sys
 from os import getenv
+import pytz
 from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, html
@@ -18,7 +19,8 @@ TOKEN = getenv("BOT_TOKEN")
 dp = Dispatcher()
 
 def time_until_friday_18():
-    now = datetime.now()
+    tz = pytz.timezone('Europe/Kyiv')
+    now = datetime.now(tz)
 
     days_ahead = (4 - now.weekday() + 7) % 7
     
