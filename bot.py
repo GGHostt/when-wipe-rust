@@ -40,8 +40,10 @@ def time_until_friday_18():
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    await message.answer(f"Привет, {html.bold(message.from_user.full_name)}, вот список команд для работы с ботом: !", \n, "/wipe")
-
+    await message.answer(
+        f"Привет, {html.bold(message.from_user.full_name)}! \n"
+        f"Вот список команд для работы с ботом:\n"
+        f"/wipe — отсчет до следующего вайпа в пятницу"
 
 @dp.message(Command("wipe"))
 async def command_wipe(message: Message) -> None:
