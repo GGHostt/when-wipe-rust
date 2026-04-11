@@ -1,5 +1,4 @@
 import asyncio
-from imaplib import Commands
 import logging
 import sys
 from os import getenv
@@ -13,7 +12,6 @@ from aiogram.filters import CommandStart
 from aiogram.filters import Command
 from aiogram.types import Message
 
-
 TOKEN = getenv("BOT_TOKEN")
 
 dp = Dispatcher()
@@ -22,44 +20,45 @@ def time_until_friday_18():
     tz = pytz.timezone('Europe/Kyiv')
     now = datetime.now(tz)
 
+ 
     days_ahead = (4 - now.weekday() + 7) % 7
-    
-
-    target_date = now.replace(hour=18, minute=0, second=0, microsecond=0) + timedelta(days=days_ahead)
-    
+    target_date = (now + timedelta(days=days_ahead)).replace(hour=18, minute=0, second=0, microsecond=0)
 
     if target_date <= now:
         target_date += timedelta(days=7)
+
+
+    week_number = target_date.isocalendar()[1]
     
 
-    diff = target_date - now
+    wipe_type = "Глобальный" if week_number % 2 == 0 else "Обычный"
 
+ 
+    diff = target_date - now
     days = diff.days
     hours, remainder = divmod(diff.seconds, 3600)
     minutes, _ = divmod(remainder, 60)
     
-    return days, hours, minutes
+    return days, hours, minutes, wipe_type
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     await message.answer(
         f"Привет, {html.bold(message.from_user.full_name)}! \n"
         f"Вот список команд для работы с ботом:\n"
-        f"/wipe — отсчет до следующего вайпа в пятницу")
+        f"/wipe — отсчет до следующего вайпа")
 
 @dp.message(Command("wipe"))
 async def command_wipe(message: Message) -> None:
-    d, h, m = time_until_friday_18()
-    await message.answer(f"До вайпа осталось: {d} дн., {h} час., {m} мин.")
-
+    d, h, m, w_type = time_until_friday_18()
+    await message.answer(
+        f"Следующий вайп: {html.bold(w_type)}\n"
+        f"До него осталось: {d} дн., {h} час., {m} мин."
+    )
 
 async def main() -> None:
-    # Initialize Bot instance with default bot properties which will be passed to all API calls
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-    # And the run events dispatching
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
