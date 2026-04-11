@@ -1,67 +1,62 @@
-import os
-import datetime
 import asyncio
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from imaplib import Commands
+import logging
+import sys
+from os import getenv
+from datetime import datetime, timedelta
 
-# Время вайпа: пятница, 18:00 (UTC)
-WIPE_WEEKDAY = 4  # пятница (0=понедельник)
-WIPE_HOUR = 18
-WIPE_MINUTE = 0
+from aiogram import Bot, Dispatcher, html
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
+from aiogram.filters import Command
+from aiogram.types import Message
 
-# Хранилище chat_id
-chats = set()
 
-# Команда /wipe
-async def wipe(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chats.add(update.effective_chat.id)
-    now = datetime.datetime.utcnow()
-    days_until = (WIPE_WEEKDAY - now.weekday()) % 7
-    wipe_time = datetime.datetime.combine(now.date(), datetime.time(WIPE_HOUR, WIPE_MINUTE)) + datetime.timedelta(days=days_until)
-    if wipe_time < now:
-        wipe_time += datetime.timedelta(days=7)
-    delta = wipe_time - now
-    hours, remainder = divmod(delta.seconds, 3600)
+TOKEN = getenv("BOT_TOKEN")
+
+dp = Dispatcher()
+
+def time_until_friday_18():
+    now = datetime.now()
+
+    days_ahead = (4 - now.weekday() + 7) % 7
+    
+
+    target_date = now.replace(hour=18, minute=0, second=0, microsecond=0) + timedelta(days=days_ahead)
+    
+
+    if target_date <= now:
+        target_date += timedelta(days=7)
+    
+
+    diff = target_date - now
+
+    days = diff.days
+    hours, remainder = divmod(diff.seconds, 3600)
     minutes, _ = divmod(remainder, 60)
-    await update.message.reply_text(f"До вайпа осталось {delta.days} дн. {hours} час. {minutes} мин.")
+    
+    return days, hours, minutes
 
-# Фоновая задача уведомления
-async def notify_wipe(app):
-    while True:
-        now = datetime.datetime.utcnow()
-        days_until = (WIPE_WEEKDAY - now.weekday()) % 7
-        wipe_time = datetime.datetime.combine(now.date(), datetime.time(WIPE_HOUR, WIPE_MINUTE)) + datetime.timedelta(days=days_until)
-        if wipe_time < now:
-            wipe_time += datetime.timedelta(days=7)
-        wait_seconds = (wipe_time - now).total_seconds()
-        await asyncio.sleep(wait_seconds)
-        for chat_id in chats:
-            try:
-                await app.bot.send_message(chat_id, "Вайп начался! 🚀")
-            except Exception as e:
-                print(f"Не удалось отправить сообщение в чат {chat_id}: {e}")
-        await asyncio.sleep(60)  # чтобы не слать повторно
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
+    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
 
-# Запуск фоновой задачи уведомлений
-async def start_notify_task(app):
-    asyncio.create_task(notify_wipe(app))
 
-# Главная функция
-async def main():
-    TOKEN = os.getenv("BOT_TOKEN")
-    if not TOKEN:
-        print("Ошибка: переменная окружения BOT_TOKEN не установлена!")
-        return
+@dp.message(Command("wipe"))
+async def command_wipe(message: Message) -> None:
+    d, h, m = time_until_friday_18()
+    await message.answer(f"До вайпа осталось: {d} дн., {h} час., {m} мин.")
 
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("wipe", wipe))
 
-    # Запускаем фоновую задачу уведомлений
-    asyncio.create_task(notify_wipe(app))
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-    # Запуск бота
-    await app.run_polling()
+    # And the run events dispatching
+    await dp.start_polling(bot)
 
-# Точка входа
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
